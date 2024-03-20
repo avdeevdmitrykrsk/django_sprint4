@@ -47,7 +47,9 @@ class Post(PublishedCreatedModel):
         )
     )
     author = models.ForeignKey(
-        User, verbose_name=('Автор публикации'), on_delete=models.CASCADE
+        User, verbose_name=('Автор публикации'),
+        on_delete=models.CASCADE, null=True,
+        related_name='posts'
     )
     location = models.ForeignKey(
         Location, verbose_name=('Местоположение'),
@@ -59,6 +61,7 @@ class Post(PublishedCreatedModel):
         on_delete=models.SET_NULL,
         null=True, blank=False
     )
+    image = models.ImageField('Фото', blank=True)
 
     class Meta:
         verbose_name = 'публикация'
