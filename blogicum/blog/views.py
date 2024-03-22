@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.db.models import QuerySet, Count
 from django.shortcuts import get_object_or_404
@@ -42,7 +43,9 @@ class ProfileDetailView(ListView):
                 is_published=True,
                 category__is_published=True,
                 author__username=self.kwargs['username']
-            )
+            ).annotate(
+                comment_count=Count('comments')
+            ).order_by('-pub_date')
             paginator = Paginator(posts, 10)
             page_number = self.request.GET.get('page')
             page_obj = paginator.get_page(page_number)
@@ -51,7 +54,7 @@ class ProfileDetailView(ListView):
         return context
 
 
-class ProfileEditView(UpdateView):
+class ProfileEditView(LoginRequiredMixin, UpdateView):
     model = User
     template_name = 'blog/user.html'
     form_class = EditUser
@@ -70,7 +73,7 @@ class ProfileEditView(UpdateView):
         return super().get_context_data(**kwargs)
 
 
-class PostCreateView(CreateView):
+class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
     form_class = CreatePost
     template_name = 'blog/create.html'
@@ -83,7 +86,7 @@ class PostCreateView(CreateView):
         return reverse('blog:profile', kwargs={'username': self.request.user})
 
 
-class PostEditView(UpdateView):
+class PostEditView(LoginRequiredMixin, UpdateView):
     model = Post
     form_class = CreatePost
     template_name = 'blog/create.html'
@@ -101,7 +104,7 @@ class PostEditView(UpdateView):
         )
 
 
-class PostDeleteView(DeleteView):
+class PostDeleteView(LoginRequiredMixin, DeleteView):
     model = Post
     template_name = 'blog/create.html'
     slug_url_kwarg = 'post_id'
@@ -131,7 +134,7 @@ class PostDetailView(DetailView):
         return context
 
 
-class CommentCreateView(CreateView):
+class CommentCreateView(LoginRequiredMixin, CreateView):
     model = Comment
     form_class = CreateCommentForm
     template_name = 'blog/comment.html'
@@ -148,7 +151,7 @@ class CommentCreateView(CreateView):
         return super().form_valid(form)
 
 
-class CommentEditView(UpdateView):
+class CommentEditView(LoginRequiredMixin, UpdateView):
     model = Comment
     form_class = CreateCommentForm
     template_name = 'blog/comment.html'
@@ -172,7 +175,7 @@ class CommentEditView(UpdateView):
         return super().form_valid(form)
 
 
-class CommentDeleteView(DeleteView):
+class CommentDeleteView(LoginRequiredMixin, DeleteView):
     model = Comment
     template_name = 'blog/comment.html'
     pk_url_kwarg = 'comment_id'
@@ -199,7 +202,9 @@ class CategoryPostView(ListView):
         context = super().get_context_data(**kwargs)
         categories = Post.objects.all().filter(
             category__slug=self.kwargs['category_slug']
-        )
+        ).annotate(
+            comment_count=Count('comments')
+        ).order_by('-pub_date')
         paginator = Paginator(categories, 10)
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
