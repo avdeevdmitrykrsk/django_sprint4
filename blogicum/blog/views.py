@@ -1,33 +1,31 @@
 from django.contrib.auth import get_user_model
-from django.db.models import QuerySet
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.core.paginator import Paginator
+from django.db.models import QuerySet, Count
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.urls import reverse, reverse_lazy
 from django.utils.timezone import now
 from django.views.generic import (
     CreateView, DeleteView, DetailView, ListView, UpdateView
 )
 
-from .forms import CreatePost, EditUser
-from .models import Category, Post
+from .forms import CreateCommentForm, CreatePost, DeletePost, EditUser
+from .models import Category, Comment, Post
 
 User = get_user_model()
-
-def posts_queryset_get() -> QuerySet:
-    """Функция получает необходимый(ые)/пост(ы) и передает во view-функции."""
-    return Post.objects.select_related(
-        'author', 'category', 'location'
-    ).filter(
-        pub_date__lte=now(),
-        is_published=True,
-        category__is_published=True
-    )
 
 
 class IndexListView(ListView):
     model = Post
     template_name = 'blog/index.html'
     paginate_by = 10
+    queryset = Post.objects.filter(
+        is_published=True,
+        category__is_published=True,
+        pub_date__lte=timezone.now()
+    ).annotate(
+        comment_count=Count('comments')
+    ).order_by('-pub_date')
 
 
 class ProfileDetailView(ListView):
@@ -39,8 +37,17 @@ class ProfileDetailView(ListView):
         profile = get_object_or_404(
             User, username=self.kwargs['username']
         )
+        if self.request.user.is_authenticated:
+            posts = Post.objects.filter(
+                is_published=True,
+                category__is_published=True,
+                author__username=self.kwargs['username']
+            )
+            paginator = Paginator(posts, 10)
+            page_number = self.request.GET.get('page')
+            page_obj = paginator.get_page(page_number)
+            context['page_obj'] = page_obj
         context['profile'] = profile
-        context['page_obj'] = profile.posts.all()
         return context
 
 
@@ -52,7 +59,9 @@ class ProfileEditView(UpdateView):
     slug_field = 'username'
 
     def get_success_url(self):
-        return reverse('blog:profile', kwargs={'username': self.request.user.username})
+        return reverse(
+            'blog:profile', kwargs={'username': self.request.user.username}
+        )
 
     def get_context_data(self, **kwargs):
         print(self.request.user.username)
@@ -66,29 +75,139 @@ class PostCreateView(CreateView):
     form_class = CreatePost
     template_name = 'blog/create.html'
 
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
+
     def get_success_url(self):
         return reverse('blog:profile', kwargs={'username': self.request.user})
 
 
-def post_detail(request: HttpRequest, post_id: int) -> HttpResponse:
-    """View-функция рендерит страницу с описанием конкретного товара."""
-    template_name: str = 'blog/detail.html'
-    post: object = get_object_or_404(posts_queryset_get().filter(pk=post_id))
-    context: dict = {
-        'post': post
-    }
-    return render(request, template_name, context)
+class PostEditView(UpdateView):
+    model = Post
+    form_class = CreatePost
+    template_name = 'blog/create.html'
+    slug_url_kwarg = 'post_id'
+    slug_field = 'id'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['post_id'] = Post.objects.filter(pk=self.kwargs['post_id'])
+        return context
+
+    def get_success_url(self):
+        return reverse(
+            'blog:post_detail', kwargs={'post_id': self.kwargs['post_id']}
+        )
+
+
+class PostDeleteView(DeleteView):
+    model = Post
+    template_name = 'blog/create.html'
+    slug_url_kwarg = 'post_id'
+    slug_field = 'id'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        post_values = Post.objects.get(pk=self.kwargs['post_id'])
+        context['form'] = DeletePost(instance=post_values)
+        return context
+
+    def get_success_url(self):
+        return reverse('blog:profile', kwargs={'username': self.request.user})
+
+
+class PostDetailView(DetailView):
+    model = Post
+    template_name = 'blog/detail.html'
+    pk_url_kwarg = 'post_id'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = CreateCommentForm()
+        context['comments'] = Comment.objects.filter(
+            post__id=self.kwargs['post_id']
+        )
+        return context
+
+
+class CommentCreateView(CreateView):
+    model = Comment
+    form_class = CreateCommentForm
+    template_name = 'blog/comment.html'
+    pk_url_kwarg = 'post_id'
+
+    def get_success_url(self):
+        return reverse(
+            'blog:post_detail', kwargs={'post_id': self.kwargs['post_id']}
+        )
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        form.instance.post = get_object_or_404(Post, pk=self.kwargs['post_id'])
+        return super().form_valid(form)
+
+
+class CommentEditView(UpdateView):
+    model = Comment
+    form_class = CreateCommentForm
+    template_name = 'blog/comment.html'
+    pk_url_kwarg = 'comment_id'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['comment_id'] = Comment.objects.filter(
+            pk=self.kwargs['comment_id']
+        )
+        return context
+
+    def get_success_url(self):
+        return reverse(
+            'blog:post_detail', kwargs={'post_id': self.kwargs['post_id']}
+        )
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        form.instance.post = get_object_or_404(Post, pk=self.kwargs['post_id'])
+        return super().form_valid(form)
+
+
+class CommentDeleteView(DeleteView):
+    model = Comment
+    template_name = 'blog/comment.html'
+    pk_url_kwarg = 'comment_id'
+
+    def get_context_data(self, **kwarg):
+        context = super().get_context_data(**kwarg)
+        context['comment_id'] = Comment.objects.filter(
+            pk=self.kwargs['comment_id']
+        )
+        return context
+
+    def get_success_url(self):
+        return reverse(
+            'blog:post_detail', kwargs={'post_id': self.kwargs['post_id']}
+        )
 
 
 class CategoryPostView(ListView):
     model = Post
     template_name = 'blog/category.html'
+    paginate_by = 10
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_obj'] = Post.objects.all().filter(category__slug=self.kwargs['category_slug'])
+        categories = Post.objects.all().filter(
+            category__slug=self.kwargs['category_slug']
+        )
+        paginator = Paginator(categories, 10)
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        context['page_obj'] = page_obj
         context['category'] = get_object_or_404(
-            Category.objects.all().filter(is_published=True),
+            Category.objects.values(
+                'title', 'description'
+            ).filter(is_published=True),
             slug=self.kwargs['category_slug']
         )
         return context
