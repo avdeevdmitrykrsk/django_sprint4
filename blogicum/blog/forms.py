@@ -10,25 +10,17 @@ class CreatePost(forms.ModelForm):
 
     class Meta:
         model = Post
-        fields = '__all__'
         exclude = ('author', 'is_published')
         widgets = {
             'pub_date': forms.DateTimeInput(attrs={'type': 'datetime-local'})
         }
 
 
-class CreateCommentForm(forms.ModelForm):
+class CreateComment(forms.ModelForm):
 
     class Meta:
         model = Comment
-        fields = ('text',)
-
-
-class DeletePost(forms.ModelForm):
-
-    class Meta:
-        model = Post
-        fields = ('image', 'pub_date', 'location', 'title', 'text')
+        exclude = ('author', 'post', 'is_published')
 
 
 class EditUser(forms.ModelForm):
