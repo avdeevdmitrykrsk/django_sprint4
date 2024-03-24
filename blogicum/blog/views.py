@@ -47,7 +47,9 @@ class ProfileDetailView(PostsFilter):
         return context
 
 
-class ProfileEditView(LoginRequiredMixin, SuccessRedirectToProfile, UpdateView):
+class ProfileEditView(
+    LoginRequiredMixin, SuccessRedirectToProfile, UpdateView
+):
     model = User
     template_name = 'blog/user.html'
     form_class = EditUser
