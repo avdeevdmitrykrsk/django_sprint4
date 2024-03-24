@@ -3,9 +3,7 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.urls import reverse
-from django.views.generic import (
-    CreateView, DeleteView, ListView, UpdateView
-)
+from django.views.generic import ListView
 
 from .forms import CreateComment, CreatePost
 from .models import Comment, Post
