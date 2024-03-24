@@ -9,14 +9,14 @@ from .forms import CreateComment, CreatePost
 from .models import Comment, Post
 
 
-class SuccessRedirectToProfile:
+class SuccessRedirectToProfileMixin:
     def get_success_url(self):
         return reverse(
             'blog:profile', kwargs={'username': self.request.user.username}
         )
 
 
-class SuccessRedirectToPost:
+class SuccessRedirectToPostMixin:
     def get_success_url(self):
         return reverse(
             'blog:post_detail', kwargs={'post_id': self.kwargs['post_id']}
@@ -37,7 +37,7 @@ class PostsFilter(ListView):
         ).order_by('-pub_date')
 
 
-class PostMixin(LoginRequiredMixin):
+class PostMixin:
     model = Post
     form_class = CreatePost
     template_name = 'blog/create.html'
@@ -55,7 +55,7 @@ class PostMixin(LoginRequiredMixin):
         return super().dispatch(request, *args, **kwargs)
 
 
-class CommentMixin(LoginRequiredMixin):
+class CommentMixin:
     model = Comment
     form_class = CreateComment
     template_name = 'blog/comment.html'

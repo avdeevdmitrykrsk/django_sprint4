@@ -9,8 +9,8 @@ from django.views.generic import (
 from .forms import CreateComment, CreatePost, EditUser
 from .mixins import (
     PostsFilter,
-    SuccessRedirectToProfile,
-    SuccessRedirectToPost,
+    SuccessRedirectToProfileMixin,
+    SuccessRedirectToPostMixin,
     PostMixin,
     CommentMixin
 )
@@ -26,8 +26,7 @@ class IndexListView(PostsFilter):
     paginate_by = NUMBER_OF_POSTS
 
     def get_queryset(self):
-        posts = self.get_annotate(self.get_filtred_posts(Post))
-        return posts
+        return self.get_annotate(self.get_filtred_posts(Post))
 
 
 class ProfileDetailView(PostsFilter):
@@ -48,7 +47,9 @@ class ProfileDetailView(PostsFilter):
 
 
 class ProfileEditView(
-    LoginRequiredMixin, SuccessRedirectToProfile, UpdateView
+    LoginRequiredMixin,
+    SuccessRedirectToProfileMixin,
+    UpdateView
 ):
     model = User
     template_name = 'blog/user.html'
@@ -62,7 +63,11 @@ class ProfileEditView(
         return super().get_context_data(**kwargs)
 
 
-class PostCreateView(LoginRequiredMixin, SuccessRedirectToProfile, CreateView):
+class PostCreateView(
+    LoginRequiredMixin,
+    SuccessRedirectToProfileMixin,
+    CreateView
+):
     model = Post
     form_class = CreatePost
     template_name = 'blog/create.html'
@@ -72,11 +77,21 @@ class PostCreateView(LoginRequiredMixin, SuccessRedirectToProfile, CreateView):
         return super().form_valid(form)
 
 
-class PostEditView(PostMixin, SuccessRedirectToPost, UpdateView):
+class PostEditView(
+    LoginRequiredMixin,
+    PostMixin,
+    SuccessRedirectToPostMixin,
+    UpdateView
+):
     pass
 
 
-class PostDeleteView(PostMixin, SuccessRedirectToProfile, DeleteView):
+class PostDeleteView(
+    LoginRequiredMixin,
+    PostMixin,
+    SuccessRedirectToProfileMixin,
+    DeleteView
+):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         post = get_object_or_404(Post, pk=self.kwargs['post_id'])
@@ -109,7 +124,11 @@ class PostDetailView(PostsFilter, ListView):
         return context
 
 
-class CommentCreateView(LoginRequiredMixin, SuccessRedirectToPost, CreateView):
+class CommentCreateView(
+    LoginRequiredMixin,
+    SuccessRedirectToPostMixin,
+    CreateView
+):
     model = Comment
     form_class = CreateComment
     template_name = 'blog/comment.html'
@@ -121,8 +140,12 @@ class CommentCreateView(LoginRequiredMixin, SuccessRedirectToPost, CreateView):
         return super().form_valid(form)
 
 
-class CommentEditView(CommentMixin, SuccessRedirectToPost, UpdateView):
-    pass
+class CommentEditView(
+    LoginRequiredMixin,
+    CommentMixin,
+    SuccessRedirectToPostMixin,
+    UpdateView
+):
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -130,7 +153,12 @@ class CommentEditView(CommentMixin, SuccessRedirectToPost, UpdateView):
         return super().form_valid(form)
 
 
-class CommentDeleteView(CommentMixin, SuccessRedirectToPost, DeleteView):
+class CommentDeleteView(
+    LoginRequiredMixin,
+    CommentMixin,
+    SuccessRedirectToPostMixin,
+    DeleteView
+):
     pass
 
 
