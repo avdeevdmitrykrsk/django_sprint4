@@ -167,7 +167,7 @@ class CategoryPostView(PostsFilter, ListView):
             category__slug=self.kwargs['category_slug'],
         )
         return categories
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['category'] = get_object_or_404(
