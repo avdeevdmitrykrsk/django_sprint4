@@ -162,15 +162,14 @@ class CategoryPostView(PostsFilter, ListView):
     template_name = 'blog/category.html'
     paginate_by = NUMBER_OF_POSTS
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    def get_queryset(self):
         categories = self.get_filtred_posts(Post.objects).filter(
             category__slug=self.kwargs['category_slug'],
         )
-        paginator = Paginator(categories, NUMBER_OF_POSTS)
-        page_number = self.request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
-        context['page_obj'] = page_obj
+        return categories
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         context['category'] = get_object_or_404(
             Category.objects.values(
                 'title', 'description'
