@@ -115,9 +115,7 @@ class PostDetailView(PostsFilter, ListView):
         context = super().get_context_data(**kwargs)
         context['form'] = CreateComment()
         context['post'] = self.get_object()
-        context['comments'] = Comment.objects.filter(
-            post__id=self.kwargs['post_id']
-        )
+        context['comments'] = self.get_object().comments.all()
         return context
 
 
