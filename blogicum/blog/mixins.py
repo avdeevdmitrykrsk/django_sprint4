@@ -1,12 +1,23 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.urls import reverse
-from django.views.generic import ListView
-
 from .forms import CreateComment, CreatePost
 from .models import Comment, Post
+
+
+class PostsFilter:
+    def get_filtred_posts(self, model):
+        return model.filter(
+            is_published=True,
+            category__is_published=True,
+            pub_date__lte=timezone.now()
+        )
+
+    def get_annotate(self, queryset):
+        return queryset.annotate(
+            comment_count=Count('comments')
+        ).order_by('-pub_date')
 
 
 class SuccessRedirectToProfileMixin:
@@ -21,20 +32,6 @@ class SuccessRedirectToPostMixin:
         return reverse(
             'blog:post_detail', kwargs={'post_id': self.kwargs['post_id']}
         )
-
-
-class PostsFilter(ListView):
-    def get_filtred_posts(self, model):
-        return model.objects.filter(
-            is_published=True,
-            category__is_published=True,
-            pub_date__lte=timezone.now()
-        )
-
-    def get_annotate(self, queryset):
-        return queryset.annotate(
-            comment_count=Count('comments')
-        ).order_by('-pub_date')
 
 
 class PostMixin:
@@ -53,6 +50,12 @@ class PostMixin:
                 )
             )
         return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        post = get_object_or_404(Post, pk=self.kwargs['post_id'])
+        context['form'] = CreatePost(instance=post)
+        return context
 
 
 class CommentMixin:

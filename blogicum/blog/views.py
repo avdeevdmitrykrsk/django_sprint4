@@ -12,7 +12,7 @@ from .mixins import (
     SuccessRedirectToProfileMixin,
     SuccessRedirectToPostMixin,
     PostMixin,
-    CommentMixin
+    CommentMixin,
 )
 from .models import Category, Comment, Post
 
@@ -21,15 +21,15 @@ User = get_user_model()
 NUMBER_OF_POSTS = 10
 
 
-class IndexListView(PostsFilter):
+class IndexListView(PostsFilter, ListView):
     template_name = 'blog/index.html'
     paginate_by = NUMBER_OF_POSTS
 
     def get_queryset(self):
-        return self.get_annotate(self.get_filtred_posts(Post))
+        return self.get_annotate(self.get_filtred_posts(Post.objects))
 
 
-class ProfileDetailView(PostsFilter):
+class ProfileDetailView(PostsFilter, ListView):
     template_name = 'blog/profile.html'
     paginate_by = NUMBER_OF_POSTS
 
@@ -37,7 +37,9 @@ class ProfileDetailView(PostsFilter):
         posts = Post.objects.filter(author__username=self.kwargs['username'])
         if self.request.user.username == self.kwargs['username']:
             return self.get_annotate(posts)
-        return self.get_annotate(self.get_filtred_posts(Post))
+        return self.get_annotate(
+            self.get_filtred_posts(posts)
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -92,11 +94,7 @@ class PostDeleteView(
     SuccessRedirectToProfileMixin,
     DeleteView
 ):
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        post = get_object_or_404(Post, pk=self.kwargs['post_id'])
-        context['form'] = CreatePost(instance=post)
-        return context
+    pass
 
 
 class PostDetailView(PostsFilter, ListView):
@@ -110,7 +108,7 @@ class PostDetailView(PostsFilter, ListView):
         if self.request.user == post.author:
             return post
         return get_object_or_404(
-            self.get_filtred_posts(Post),
+            self.get_filtred_posts(Post.objects),
             pk=self.kwargs['post_id']
         )
 
@@ -141,16 +139,13 @@ class CommentCreateView(
 
 
 class CommentEditView(
+    PostsFilter,
     LoginRequiredMixin,
     CommentMixin,
     SuccessRedirectToPostMixin,
     UpdateView
 ):
-
-    def form_valid(self, form):
-        form.instance.author = self.request.user
-        form.instance.post = get_object_or_404(Post, pk=self.kwargs['post_id'])
-        return super().form_valid(form)
+    pass
 
 
 class CommentDeleteView(
@@ -162,14 +157,14 @@ class CommentDeleteView(
     pass
 
 
-class CategoryPostView(PostsFilter):
+class CategoryPostView(PostsFilter, ListView):
     model = Post
     template_name = 'blog/category.html'
     paginate_by = NUMBER_OF_POSTS
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        categories = self.get_filtred_posts(Post).filter(
+        categories = self.get_filtred_posts(Post.objects).filter(
             category__slug=self.kwargs['category_slug'],
         )
         paginator = Paginator(categories, NUMBER_OF_POSTS)

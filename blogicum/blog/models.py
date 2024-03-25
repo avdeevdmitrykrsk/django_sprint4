@@ -8,8 +8,8 @@ User = get_user_model()
 
 class Category(PublishedCreatedModel):
     title = models.CharField('Заголовок', max_length=256)
-    description: str = models.TextField('Описание')
-    slug: str = models.SlugField(
+    description = models.TextField('Описание')
+    slug = models.SlugField(
         'Идентификатор', unique=True,
         help_text=(
             'Идентификатор страницы для URL; разрешены символы латиницы, '
@@ -84,7 +84,7 @@ class Comment(models.Model):
         User,
         on_delete=models.CASCADE,
         verbose_name='Автор комментария',
-        related_name='authors'
+        related_name='comments'
     )
     created_at = models.DateTimeField(
         'Добавлено', auto_now=False, auto_now_add=True
